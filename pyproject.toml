@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "universal-linux-video-upscaler"
+version = "0.1.0"
+description = "Standalone Linux video upscaler with CPU, PyTorch and NCNN/Vulkan backends"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "Antoni Norman"}]
+keywords = ["video", "upscaling", "ffmpeg", "real-esrgan", "linux"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: X11 Applications",
+  "Environment :: Wayland",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+]
+dependencies = []
+
+[project.scripts]
+video-upscaler = "video_upscaler.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -1,0 +1,16 @@
+#!/bin/sh
+set -eu
+
+if [ -z "${NAUTILUS_SCRIPT_SELECTED_FILE_PATHS:-}" ]; then
+    notify-send --urgency=critical "Upscale Video" "Select one local video file." 2>/dev/null || true
+    exit 2
+fi
+
+selected=$(printf '%s\n' "$NAUTILUS_SCRIPT_SELECTED_FILE_PATHS" | sed -n '1p')
+count=$(printf '%s\n' "$NAUTILUS_SCRIPT_SELECTED_FILE_PATHS" | sed '/^$/d' | wc -l)
+if [ "$count" -ne 1 ] || [ ! -f "$selected" ]; then
+    notify-send --urgency=critical "Upscale Video" "Select exactly one local video file." 2>/dev/null || true
+    exit 2
+fi
+
+exec @EXEC@ gui "$selected"

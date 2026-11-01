@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Service
+ServiceTypes=KonqPopupMenu/Plugin
+MimeType=video/*;
+Actions=upscaleVideo;
+X-KDE-Priority=TopLevel
+X-KDE-RequiredNumberOfUrls=1
+Name=Upscale Video
+Icon=video-x-generic
+
+[Desktop Action upscaleVideo]
+Name=Upscale Video…
+Icon=video-x-generic
+Exec=@EXEC@ gui %f
