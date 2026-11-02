@@ -8,18 +8,23 @@ version = "0.1.0"
 description = "Standalone Linux video upscaler with CPU, PyTorch and NCNN/Vulkan backends"
 readme = "README.md"
 requires-python = ">=3.10"
-license = {text = "MIT"}
+license = "MIT"
 authors = [{name = "Antoni Norman"}]
 keywords = ["video", "upscaling", "ffmpeg", "real-esrgan", "linux"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Environment :: X11 Applications",
   "Environment :: Wayland",
-  "License :: OSI Approved :: MIT License",
   "Operating System :: POSIX :: Linux",
   "Programming Language :: Python :: 3",
 ]
 dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/pinguy/universal-linux-video-upscaler"
+Documentation = "https://github.com/pinguy/universal-linux-video-upscaler#readme"
+Issues = "https://github.com/pinguy/universal-linux-video-upscaler/issues"
+Source = "https://github.com/pinguy/universal-linux-video-upscaler"
 
 [project.scripts]
 video-upscaler = "video_upscaler.cli:main"

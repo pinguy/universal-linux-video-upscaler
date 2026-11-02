@@ -9,7 +9,7 @@ import subprocess
 import threading
 from collections import deque
 from pathlib import Path
-from typing import Callable, TextIO
+from typing import Callable, IO, TextIO
 
 
 class JobCancelled(RuntimeError):
@@ -30,7 +30,7 @@ class ProcessController:
     def __init__(self) -> None:
         self.cancel_event = threading.Event()
         self._lock = threading.RLock()
-        self._current: subprocess.Popen[str] | None = None
+        self._active: set[subprocess.Popen] = set()
 
     def reset(self) -> None:
         self.cancel_event.clear()
@@ -38,8 +38,16 @@ class ProcessController:
     def cancel(self) -> None:
         self.cancel_event.set()
         with self._lock:
-            process = self._current
-        if process and process.poll() is None:
+            processes = tuple(self._active)
+        for process in processes:
+            self._terminate(process)
+
+    def check_cancelled(self) -> None:
+        if self.cancel_event.is_set():
+            raise JobCancelled("Job cancelled")
+
+    def _terminate(self, process: subprocess.Popen) -> None:
+        if process.poll() is None:
             try:
                 os.killpg(process.pid, signal.SIGTERM)
             except ProcessLookupError:
@@ -57,27 +65,63 @@ class ProcessController:
             except ProcessLookupError:
                 pass
 
+    def spawn(self, command: list[str], *, log: TextIO,
+              stdin: int | IO | None = None,
+              stdout: int | IO | None = subprocess.PIPE,
+              stderr: int | IO | None = subprocess.STDOUT,
+              text: bool = False,
+              env: dict[str, str] | None = None,
+              cwd: Path | None = None) -> subprocess.Popen:
+        self.check_cancelled()
+        log.write("$ " + shlex.join(command) + "\n")
+        log.flush()
+        options = {
+            "stdin": stdin,
+            "stdout": stdout,
+            "stderr": stderr,
+            "text": text,
+            "bufsize": 1 if text else 0,
+            "start_new_session": True,
+            "env": env,
+            "cwd": str(cwd) if cwd else None,
+        }
+        if text:
+            options["errors"] = "replace"
+        process = subprocess.Popen(command, **options)
+        with self._lock:
+            self._active.add(process)
+        return process
+
+    def finish(self, process: subprocess.Popen, command: list[str],
+               tail: list[str] | None = None) -> None:
+        try:
+            code = process.wait()
+        finally:
+            with self._lock:
+                self._active.discard(process)
+        self.check_cancelled()
+        if code:
+            raise ProcessError(command, code, tail or [])
+
+    def stop(self, process: subprocess.Popen) -> None:
+        self._terminate(process)
+        try:
+            process.wait(timeout=6)
+        except subprocess.TimeoutExpired:
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            process.wait()
+        finally:
+            with self._lock:
+                self._active.discard(process)
+
     def run(self, command: list[str], *, log: TextIO,
             on_line: Callable[[str], None] | None = None,
             env: dict[str, str] | None = None,
             cwd: Path | None = None) -> None:
-        if self.cancel_event.is_set():
-            raise JobCancelled("Job cancelled")
-        log.write("$ " + shlex.join(command) + "\n")
-        log.flush()
-        process = subprocess.Popen(
-            command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            errors="replace",
-            bufsize=1,
-            start_new_session=True,
-            env=env,
-            cwd=str(cwd) if cwd else None,
-        )
-        with self._lock:
-            self._current = process
+        process = self.spawn(command, log=log, text=True, env=env, cwd=cwd)
         tail: deque[str] = deque(maxlen=20)
         try:
             assert process.stdout is not None
@@ -88,17 +132,11 @@ class ProcessController:
                 tail.append(line)
                 if on_line:
                     on_line(line)
-            code = process.wait()
-        finally:
-            with self._lock:
-                if self._current is process:
-                    self._current = None
-        if self.cancel_event.is_set():
+            self.finish(process, command, list(tail))
+        except BaseException:
             if process.poll() is None:
-                try:
-                    os.killpg(process.pid, signal.SIGKILL)
-                except ProcessLookupError:
-                    pass
-            raise JobCancelled("Job cancelled")
-        if code:
-            raise ProcessError(command, code, list(tail))
+                self.stop(process)
+            else:
+                with self._lock:
+                    self._active.discard(process)
+            raise

@@ -12,7 +12,8 @@ from ..types import JobConfig, ProgressCallback, ProgressEvent
 
 
 def enhance(config: JobConfig, inputs: Path, outputs: Path, total: int,
-            controller: ProcessController, log, progress: ProgressCallback) -> None:
+            controller: ProcessController, log, progress: ProgressCallback, *,
+            offset: int = 0, overall_total: int | None = None) -> None:
     python = config.pytorch_python or pytorch_python()
     weights = config.pytorch_weights or (pytorch_weights_dir() / PYTORCH_MODELS[config.model])
     if not weights.is_file():
@@ -29,7 +30,7 @@ def enhance(config: JobConfig, inputs: Path, outputs: Path, total: int,
             return
         if event.get("type") == "progress":
             progress(ProgressEvent("enhancing", "CPU neural enhancement",
-                                   int(event["current"]), int(event["total"]), True))
+                                   offset + int(event["current"]), overall_total or total, True))
 
     controller.run([
         str(python), "-m", "video_upscaler.cpu_worker",

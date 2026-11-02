@@ -46,11 +46,22 @@ CUDA/HIP devices, uses FP32 and refuses to continue if the library selects a GPU
 The GUI asks before replacement. The CLI refuses unless `--overwrite` is
 present. The source is never a valid output target.
 
-## Neural job needs substantial disk space
+## Neural job runs out of temporary space
 
-Lossless extracted and native 4× PNG frames are large. By default temporary
-frames live in `.video-upscaler-tmp` beside the output so the free-space check
-uses the destination filesystem. The directory is removed when empty.
+Neural processing keeps only one bounded input/enhanced frame batch on disk;
+it does not dump the whole video to PNG files. By default the isolated workspace
+lives in `.video-upscaler-tmp` beside the output and is removed when empty.
+
+For a different temporary filesystem, the CLI accepts an explicit location:
+
+```bash
+video-upscaler run input.mp4 --backend realesrgan-ncnn --gpu 0 \
+  --temp-dir /path/with/free-space
+```
+
+If a write or child process reports `ENOSPC`, the job aborts and removes its
+partial output and isolated workspace. The current job log is printed by the
+CLI and normally lives under `~/.local/state/video-upscaler/logs/`.
 
 ## Variable-frame-rate input
 
