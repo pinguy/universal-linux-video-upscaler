@@ -99,6 +99,9 @@ import sys
 source, target, executable = sys.argv[1:]
 Path(target).write_text(Path(source).read_text().replace('@EXEC@', executable))
 PY
+    # KDE refuses user-owned service menus unless they carry the executable bit.
+    # This is a trust check on the .desktop launcher, not just on Exec= itself.
+    chmod 0755 "$KDE_MENU"
     if [ "${VIDEO_UPSCALER_SKIP_DESKTOP_CACHE:-0}" != 1 ] && command -v kbuildsycoca6 >/dev/null 2>&1; then
         kbuildsycoca6 --noincremental >/dev/null
     fi

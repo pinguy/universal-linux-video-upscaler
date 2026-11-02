@@ -27,6 +27,7 @@ class InstallTests(unittest.TestCase):
             self.assertTrue(os.access(launcher, os.X_OK))
             self.assertIn("Upscale Video…", kde.read_text())
             self.assertNotIn("@EXEC@", kde.read_text())
+            self.assertTrue(os.access(kde, os.X_OK))
             self.assertTrue(os.access(nautilus, os.X_OK))
             subprocess.run([str(launcher), "doctor"], cwd=PROJECT, env=env, check=True,
                            capture_output=True, text=True)
